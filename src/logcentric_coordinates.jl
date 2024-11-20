@@ -1,5 +1,5 @@
-
-
+export to_heightmap_coordinates, to_heightmap_coordinates!, from_heightmap_coordinates, from_heightmap_coordinates!
+# export straighten_x, straighten_x!, curve_x, curve_x!
 struct DistanceOptimParams{T1, T2, T3, T4, T5}
     xl::T1
     h::T2
@@ -159,7 +159,7 @@ function rescale_points!(points, width, height, minX=nothing, maxX=nothing)
     minX = @something minX minimum(points[1, :])
     maxX = @something maxX maximum(points[1, :])
     oldLRange = maxX - minX
-    points[2, :] .= scale_range.(@view(points[2, :]), -π, 2*π, 1, width-1)
+    points[2, :] .= scale_range.(@view(points[2, :]), -π, 2π, 1, width-1)
     points[1, :] .= scale_range.(@view(points[1, :]), minX, oldLRange, 1, height-1)
     return points, minX, maxX
 end
@@ -169,7 +169,7 @@ function rescale_points_back!(points, width, height, minX=nothing, maxX=nothing)
     minX = @something minX minimum(points[1, :])
     maxX = @something maxX maximum(points[1, :])
     newRange = maxX - minX
-    points[2, :] .= scale_range.(@view(points[2, :]), 1, width-1, -π, 2*π)
+    points[2, :] .= scale_range.(@view(points[2, :]), 1, width-1, -π, 2π)
     points[1, :] .= scale_range.(@view(points[1, :]), 1, height-1, minX, newRange)
     return points, minX, maxX
 end
