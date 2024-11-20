@@ -4,13 +4,13 @@ export filter_point_cloud
 using LinearAlgebra, Statistics, Random, BandedMatrices, FillArrays, OffsetArrays
 # using GLMakie
 
-if isinteractive() 
-    println("Using GLMakie....")
+# if isinteractive() 
+    # println("Using GLMakie....")
     using GLMakie
-else
-    using Observables
-end
-using ColorSchemes
+    using ColorSchemes
+# else
+    # using Observables
+# end
 
 function filter_point_cloud(data; snake_size=180, 
                             min_radius=75, 
@@ -23,6 +23,13 @@ function filter_point_cloud(data; snake_size=180,
                             snake_iterations=10,
                             max_skipped_layers=5,
                             debug_plots=false)
+    data = data'
+    if size(data, 2) < 4
+        round_z = round.(Integer, data[:, 3])
+        layers = unique(round_z)
+        layers_inds = [findfirst(x .== layers) for x ∈ round_z]
+        data = hcat(layers_inds, data)
+    end
     first_layer = round(Integer, data[1, 1])
     last_layer = round(Integer, data[end, 1])
 
@@ -94,7 +101,7 @@ function filter_point_cloud(data; snake_size=180,
     else
         circle_filt = 1:circle_ind-1
     end
-    return points_filter, circles[circle_filt, :]
+    return points_filter, circles[circle_filt, :]'
 end
 
 function init_debug_plots(first_layer, last_layer)

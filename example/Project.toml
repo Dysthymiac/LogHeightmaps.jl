@@ -1,0 +1,4 @@
+[deps]
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+LogHeightmaps = "7b82365c-f712-49c8-895b-fd515eb238ad"
+MAT = "23992714-dd62-5051-b70f-ba57cb901cac"

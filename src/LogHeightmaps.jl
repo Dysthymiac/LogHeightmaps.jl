@@ -11,6 +11,5 @@ using DocStringExtensions
 include("point_cloud_filtering.jl")
 include("centerline_estimation.jl")
 include("logcentric_coordinates.jl")
-# Write your package code here.
 
 end
