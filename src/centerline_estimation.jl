@@ -1,5 +1,5 @@
 
-export SmoothingSpline3D, get_peaks, eval_spline, get_length, predict_points
+export SmoothingSpline3D, ExtremaSegments, get_3D_peaks, get_peaks, eval_spline, get_length, predict_points
 
 
 function simpsons_rule13(f, a, b)
@@ -64,21 +64,22 @@ function get_peaks(spl::SmoothingSpline{T}, coeffs=get_coeffs(spl)) where T
         h = xr - xl
         c0, c1, c2, c3 = coeffs
         D = c2.^2 - 4c3 * c1
-        push!(peaks, xl)
+        # push!(peaks, xl)
         if D > 0
             t1 = (-c2 + √D)/2c3
-            if t1 ∈ 0..1
-                push!(peaks, xl + h * t1)
-            end
+            t1 ∈ -1..2 && push!(peaks, xl + h * t1)
+            
             t2 = (-c2 - √D)/2c3
-            if t2 ∈ 0..1
-                push!(peaks, xl + h * t2)
-            end
+            t2 ∈ -1..2 && push!(peaks, xl + h * t2)
         elseif D ≈ 0
-            push!(peaks, xl + h * (-c2)/2c3)
+            t = -c2/2c3
+            t ∈ -1..2 && push!(peaks, xl + h * t)
         end
+
+        t = -c2/c3
+        t ∈ -1..2 && push!(peaks, xl + h * t)
     end
-    push!(peaks, spl.Xdesign[end])
+    # push!(peaks, spl.Xdesign[end])
     return peaks
 end
 
@@ -168,16 +169,49 @@ function get_length(spl::SmoothingSpline3D, x; segment_length=false)
     end
 end
 
-function SmoothingSpline3D(X, Y, Z; λ=250.0) 
-    splineXY = SmoothingSplines.fit(SmoothingSpline, X, Y, λ)
-    splineXZ = SmoothingSplines.fit(SmoothingSpline, X, Z, λ)
+function get_3D_peaks(splineXY, splineXZ)
+    peaks_Y = get_peaks(splineXY)
+    peaks_Z = get_peaks(splineXZ)
+    # @show length(X)
+    # @show length(peaks_Y)
+    # @show length(peaks_Z)
+    return union(sort(vcat(peaks_Y, peaks_Z)))
+end
+
+struct ExtremaSegments{T}
+    min_x_step::T
+end
+
+reevaluate_spline(n_segments::Nothing, X, splineXY, splineXZ) = (X, splineXY, splineXZ)
+function reevaluate_spline(n_segments::Integer, splineXY, splineXZ) 
+    X = range(X[1], X[end], n_segments+1)
+    Y = SmoothingSplines.predict(splineXY, X)
+    Z = SmoothingSplines.predict(splineXZ, X)
+    splineXY = SmoothingSplines.fit(SmoothingSpline, X, Y, 0.0)
+    splineXZ = SmoothingSplines.fit(SmoothingSpline, X, Z, 0.0)
+    return (X, splineXY, splineXZ)
+end
+function reevaluate_spline(n_segments::ExtremaSegments, X, splineXY, splineXZ) 
+    peaks = get_3D_peaks(splineXY, splineXZ)
+    clean_peaks = peaks[[true; abs.(diff(peaks)) .> n_segments.min_x_step]]
+    Y = SmoothingSplines.predict(splineXY, X)
+    Z = SmoothingSplines.predict(splineXZ, X)
+    splineXY = SmoothingSplines.fit(SmoothingSpline, clean_peaks, Y, 0.0)
+    splineXZ = SmoothingSplines.fit(SmoothingSpline, clean_peaks, Z, 0.0)
+    return clean_peaks, splineXY, splineXZ
+end
+
+function SmoothingSpline3D(X, Y, Z; n_segments=ExtremaSegments(5), λ=250.0) 
+    splineXY = SmoothingSplines.fit(SmoothingSpline, X, Y, Float64(λ))
+    splineXZ = SmoothingSplines.fit(SmoothingSpline, X, Z, Float64(λ))
+
+    X, splineXY, splineXZ = reevaluate_spline(n_segments, X, splineXY, splineXZ)
+
     coeffsXY = get_coeffs(splineXY)
     coeffsXZ = get_coeffs(splineXZ)
     cumlengths = vcat([0], cumsum(
         [quadrature_length5(t->get_segment_length_deriv(t, h, cXY, cXZ), 0, 1) 
             for (h, cXY, cXZ) ∈ zip(X[2:end] .- X[1:end-1], eachcol(coeffsXY[:, 2:end]), eachcol(coeffsXZ[:, 2:end]))]))
-    peaks_Y = get_peaks(splineXY)
-    peaks_Z = get_peaks(splineXZ)
     return SmoothingSpline3D(splineXY, splineXZ, coeffsXY, coeffsXZ, cumlengths)
 end
 
@@ -186,29 +220,3 @@ end
 predict_points(spl::SmoothingSpline3D, x) = (x, spl(x)...)
 
 normalize(x) = x ./ norm(x)
-
-# function fit_3D_centerline(X, Y, Z; segments=30, λ=250.0)
-    
-#     minX, maxX = extrema(X)
-#     Xs = range(minX, maxX, length=segments+1)
-
-#     splX = SmoothingSplines.fit(SmoothingSpline, X, Y, λ) 
-#     splY = SmoothingSplines.fit(SmoothingSpline, X, Z, λ) 
-
-#     return Xs, splX, splY
-# end
-
-# function predict_3D_centerline(Xs, splX, splY)
-#     Y_pred = SmoothingSplines.predict(splX, Xs) # fitted vector
-#     Z_pred = SmoothingSplines.predict(splY, Xs) # fitted vector
-#     return Xs, Y_pred, Z_pred
-# end
-
-# function fit_predict_3D_centerline(X, Y, Z; segments=30, λ=250.0)
-#     return predict_3D_centerline(fit_3D_centerline(X, Y, Z; segments=segments, λ=λ)...)
-# end
-
-# function fit_predict_3D_centerline(points; segments=30, λ=250.0)
-#     res = fit_predict_3D_centerline(points[1, :], points[2, :], points[3, :]; segments=segments, λ=λ)
-#     return stack(res, dims=1)
-# end
