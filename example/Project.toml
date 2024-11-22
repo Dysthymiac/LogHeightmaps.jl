@@ -1,4 +1,5 @@
 [deps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
 LogHeightmaps = "7b82365c-f712-49c8-895b-fd515eb238ad"

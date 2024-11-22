@@ -1,3 +1,4 @@
+using CUDA
 using LogHeightmaps
 using MAT
 using GLMakie
@@ -7,7 +8,6 @@ using Statistics
 log = 1
 run = 3
 # file_path = 
-
 data = MAT.matread(file_path)
 
 points = data["laser"][:, 2:4]' |> collect

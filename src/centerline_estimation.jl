@@ -1,5 +1,5 @@
 
-export SmoothingSpline3D, ExtremaSegments, get_3D_peaks, get_peaks, eval_spline, get_length, predict_points
+export SmoothingSpline3D, ExtremaSegments, get_length, predict_points
 
 
 function simpsons_rule13(f, a, b)
@@ -27,6 +27,16 @@ function quadrature_length5(df, a, b)
        return length
 end
 
+"""
+$(TYPEDEF)
+
+A class for the 3D smoothing spline, i.e. a class that holds two splines: X ↦ Y and X ↦ Z. Uses splines from [SmoothingSplines.jl](https://github.com/nignatiadis/SmoothingSplines.jl). 
+
+---
+
+$(FIELDS)
+
+"""
 struct SmoothingSpline3D{T}
     splineXY::SmoothingSpline{T}
     splineXZ::SmoothingSpline{T}
@@ -137,6 +147,18 @@ end
 
 get_segment_length_deriv(t, h, coeffsY, coeffsZ) = √(h^2 + get_deriv(t, coeffsY)^2 + get_deriv(t, coeffsZ)^2)
 
+"""
+    get_length(spl::SmoothingSpline3D, x; segment_length=false)
+    
+Function that returns the length of spline `spl` at given `x`. 
+Uses 5-point Gaussian quadratures to approximate the length.
+
+Note: if given `x` is less than the first control point of spline, 
+the returned value will be negative (because this is used for coordinate transformation).
+
+# Keywords
+- `segment_length=false`: whether to compute the length from the first control point or only the length of the segment that contains `x`
+"""
 function get_length(spl::SmoothingSpline3D, x; segment_length=false)
     Xdesign = spl.splineXY.Xdesign
     idxl = searchsortedlast(Xdesign, x)
@@ -172,12 +194,20 @@ end
 function get_3D_peaks(splineXY, splineXZ)
     peaks_Y = get_peaks(splineXY)
     peaks_Z = get_peaks(splineXZ)
-    # @show length(X)
-    # @show length(peaks_Y)
-    # @show length(peaks_Z)
     return union(sort(vcat(peaks_Y, peaks_Z)))
 end
 
+"""
+$(TYPEDEF)
+
+A class to specify that the spline should be divided into segments between the extrema points of the original spline.
+`min_x_step` specifies the minimum difference between control points.
+
+---
+
+$(FIELDS)
+
+"""
 struct ExtremaSegments{T}
     min_x_step::T
 end
@@ -201,6 +231,18 @@ function reevaluate_spline(n_segments::ExtremaSegments, X, splineXY, splineXZ)
     return clean_peaks, splineXY, splineXZ
 end
 
+"""
+    SmoothingSpline3D(X, Y, Z; n_segments=ExtremaSegments(5), λ=250.0)
+    
+Function that creates a [`SmoothingSpline3D`](@ref) from given points. 
+
+# Keywords
+- `n_segments=ExtremaSegments(5)`: specifies how to divide the resulting spline into segments. Can be one of 3 possible values:
+    if `n_segments::Nothing` then original `X` values will be used to divide the spline into segments.
+    if `n_segments::ExtremaSegments` then the segments will be chosen according to the extremas of the spline.
+    if `n_segments::Integer` then `range(minimum(X), maximum(X), n_segments+1)` will be used as control points.
+- `λ=250.0`: the smoothing parameter. Please refer to [SmoothingSplines.jl](https://github.com/nignatiadis/SmoothingSplines.jl) package for more information.
+"""
 function SmoothingSpline3D(X, Y, Z; n_segments=ExtremaSegments(5), λ=250.0) 
     splineXY = SmoothingSplines.fit(SmoothingSpline, X, Y, Float64(λ))
     splineXZ = SmoothingSplines.fit(SmoothingSpline, X, Z, Float64(λ))
@@ -217,6 +259,14 @@ end
 
 
 (spl::SmoothingSpline3D)(x) = (SmoothingSplines.predict(spl.splineXY, x), SmoothingSplines.predict(spl.splineXZ, x))
+
+"""
+    predict_points(spl::SmoothingSpline3D, x)
+    
+Evaluate spline `spl` at points `x`.
+Returns a tuple `(X, Y, Z)` of evaluated coordinates. If multiple values of `x` were provided, returns `Y` and `Z` as vectors of corresponding sizes.
+
+"""
 predict_points(spl::SmoothingSpline3D, x) = (x, spl(x)...)
 
 normalize(x) = x ./ norm(x)

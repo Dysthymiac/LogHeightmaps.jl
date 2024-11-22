@@ -1,29 +1,100 @@
-export calculate_heightmap, calculate_heightmap!, segment_branches
+export calculate_heightmap, calculate_heightmap!, rescale_calculate_heightmap, rescale_calculate_heightmap!, segment_branches
 
+function cuda_is_functional() 
+    ext = Base.get_extension(LogHeightmaps, :CUDAExt)
+    if isnothing(ext)
+        return false
+    else
+        ext.cuda_is_functional()
+    end
+end
 
-calculate_heightmap(converted_points, α, width, height, realHeight; use_cuda=true) = 
-    calculate_heightmap!(zeros(height, width), converted_points, α, realHeight; use_cuda=use_cuda)
+"""
+    rescale_calculate_heightmap(logcentric_points, α, min_l=nothing, max_l=nothing, real_length=nothing; use_cuda=cuda_is_functional())
+    
+Calculate heightmap from the points in log-centric coordinate system. 
+`logcentric_points` must be a 3×n `AbstractMatrix`, where the rows correspond to l, θ, ρ values respectively, α is a smoothing parameter. 
+`min_l` and `max_l` are minimum and maximum values of l. If not provided explicitly, estimated from points. 
+`real_length` is the estimated real length of long. If not provided explicitly, calculated as `max_l - min_l`.
 
-function do_cg!(b, R; use_cuda=true)
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details.
+
+# Keywords
+- `use_cuda=cuda_is_functional()`: it is possible to use CUDA to speed up the computation.
+"""
+rescale_calculate_heightmap(logcentric_points, α, min_l=nothing, max_l=nothing, real_length=nothing; use_cuda=cuda_is_functional()) = 
+    rescale_calculate_heightmap!(zeros(height, width), logcentric_points, α, min_l, max_l, real_length; use_cuda=use_cuda)
+
+"""
+    rescale_calculate_heightmap(logcentric_points, α, min_l=nothing, max_l=nothing, real_length=nothing; use_cuda=cuda_is_functional())
+    
+In-place version of [`rescale_calculate_heightmap`](@ref) function.
+Calculate heightmap from the points in log-centric coordinate system. 
+`logcentric_points` must be a 3×n `AbstractMatrix`, where the rows correspond to l, θ, ρ values respectively, α is a smoothing parameter. 
+`min_l` and `max_l` are minimum and maximum values of l. If not provided explicitly, estimated from points. 
+`real_length` is the estimated real length of long. If not provided explicitly, calculated as `max_l - min_l`.
+
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details.
+
+# Keywords
+- `use_cuda=cuda_is_functional()`: it is possible to use CUDA to speed up the computation.
+"""
+function rescale_calculate_heightmap!(heightmap, logcentric_points, α, min_l=nothing, max_l=nothing, real_length=nothing; use_cuda=cuda_is_functional())
+    height, width = size(heightmap)
+    rescaled_points, min_l, max_l = rescale_points(logcentric_points, width, height, min_l, max_l)
+    calculate_heightmap!(heightmap, rescaled_points, α, real_length; use_cuda=use_cuda)
+    return heightmap
+end
+
+"""
+    calculate_heightmap(rescaled_points, α, width, height, real_length; use_cuda=true)
+    
+Calculate heightmap from the points in log-centric coordinate system. 
+`rescaled_points` must be a 3×n `AbstractMatrix`, where the rows correspond to l, θ, ρ values respectively, α is a smoothing parameter. 
+It is assumed that l is already rescaled to the `[1, height]` range, and θ is rescaled to `[1, width]`. 
+`real_length` is the difference between minimum and maximum l values before rescaling. 
+
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details.
+
+# Keywords
+- `use_cuda=cuda_is_functional()`: it is possible to use CUDA to speed up the computation.
+"""
+calculate_heightmap(rescaled_points, α, width, height, real_length; use_cuda=cuda_is_functional()) = 
+    calculate_heightmap!(zeros(height, width), rescaled_points, α, real_length; use_cuda=use_cuda)
+
+function cg_cuda! end
+
+function do_cg!(b, R; use_cuda=cuda_is_functional())
     if use_cuda
-        cub = CuArray(b)
-        cuR = sparse_to_cuda(R)
-        cg!(cub, cuR, cub)
-        copyto!(b, cub)
+        cg_cuda!(b, R)
     else
         cg!(b, R, b)
     end
 end
 
-function calculate_heightmap!(heightmap, converted_points, α, realHeight; use_cuda=true)
-    width = size(heightmap, 2)
-    height = size(heightmap, 1)
+
+"""
+    calculate_heightmap!(heightmap, rescaled_points, α, width, height, real_length; use_cuda=true)
+    
+In-place version of the [`calculate_heightmap`](@ref) function.
+Calculate heightmap from the points in log-centric coordinate system. 
+`rescaled_points` must be a 3×n `AbstractMatrix`, where the rows correspond to l, θ, ρ values respectively, α is a smoothing parameter. 
+It is assumed that l is already rescaled to the `[1, height]` range, and θ is rescaled to `[1, width]`. 
+`real_length` is the difference between minimum and maximum l values before rescaling. 
+
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details.
+
+# Keywords
+- `use_cuda=cuda_is_functional()`: it is possible to use CUDA to speed up the computation.
+"""
+function calculate_heightmap!(heightmap, rescaled_points, α, real_length; use_cuda=cuda_is_functional())
+    height, width = size(heightmap)
     b = vec(heightmap)
     invΔθ = 360 / width
-    invΔL = realHeight / height
+    invΔL = real_length / height
     reg = construct_regularizer(width, height, invΔθ, invΔL) #|> cu
 
-    R = constructAb!(b, converted_points, width, height)# |> cu
+    R = constructAb!(b, rescaled_points, width, height)# |> cu
     R .+= α*reg
     do_cg!(b, R; use_cuda=use_cuda)
     return heightmap
@@ -45,6 +116,16 @@ gaussian_second_diff_x(σ, sz) = gaussian_second_diff(σ, sz, 1)
 
 gaussian_second_diff_weighted_sum(σy, σx, sz) = σy .* gaussian_second_diff_y(σy, sz) .+ σx .* gaussian_second_diff_x(σx, sz) 
 
+"""
+    segment_branches(I, branch_radius, real_size)
+    
+Segment branches from the heightmap image using Difference of Gaussians.
+`branch_radius` specifies approximate radius of the branch on the surface in mm.
+`real_size` is a tuple containing an estimate of the real size of the heightmap, usually calculated as `(real_height, 2π * mean(heightmap))`.
+
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details.
+
+"""
 function segment_branches(I, branch_radius, real_size)
     unpad(I) = I[size(I, 1)÷2+1:end, :]
     pad(I) = vcat(I[end:-1:1, :], I)
@@ -54,8 +135,6 @@ function segment_branches(I, branch_radius, real_size)
     return fft(Ip) .* fft(kernel) |> ifft |> ifftshift |> real |> unpad |> x->max.(x, 0) |> normalize_from_extrema
 end
 
-
-sparse_to_cuda(x::SparseMatrixCSC{Tv, Ti}) where {Tv,Ti<:Integer} = CuSparseMatrixCSC{Tv, Ti}(CuArray(x.colptr), CuArray(x.rowval), CuArray(x.nzval), (x.m, x.n))
 
 function construct_regularizer(width, height, invΔθ, invΔL)
     szN = width * height

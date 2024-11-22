@@ -12,3 +12,5 @@ Documentation for [LogHeightmaps](https://github.com/Dysthymiac/LogHeightmaps.jl
 ```@autodocs
 Modules = [LogHeightmaps]
 ```
+```@bibliography
+```

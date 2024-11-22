@@ -1,4 +1,6 @@
 export to_heightmap_coordinates, to_heightmap_coordinates!, from_heightmap_coordinates, from_heightmap_coordinates!
+export rescale_points!, rescale_points, rescale_points_back!, rescale_points_back
+export from_logcentric_coordinates, from_logcentric_coordinates!, to_logcentric_coordinates, to_logcentric_coordinates!
 # export straighten_x, straighten_x!, curve_x, curve_x!
 struct DistanceOptimParams{T1, T2, T3, T4, T5}
     xl::T1
@@ -155,25 +157,43 @@ curve_x(spline, points; iterations=2) = curve_x!(copy(points), spline; iteration
 
 scale_range(val, oldMin, oldRange, newMin, newRange) = newMin + newRange * (val - oldMin) / oldRange
 
-function rescale_points!(points, width, height, minX=nothing, maxX=nothing)
-    minX = @something minX minimum(points[1, :])
-    maxX = @something maxX maximum(points[1, :])
-    oldLRange = maxX - minX
-    points[2, :] .= scale_range.(@view(points[2, :]), -π, 2π, 1, width-1)
-    points[1, :] .= scale_range.(@view(points[1, :]), minX, oldLRange, 1, height-1)
-    return points, minX, maxX
-end
-rescale_points(points, width, height, minY, maxY) = rescale_points!(copy(points), width, height, minY, maxY)
 
-function rescale_points_back!(points, width, height, minX=nothing, maxX=nothing)
-    minX = @something minX minimum(points[1, :])
-    maxX = @something maxX maximum(points[1, :])
-    newRange = maxX - minX
-    points[2, :] .= scale_range.(@view(points[2, :]), 1, width-1, -π, 2π)
-    points[1, :] .= scale_range.(@view(points[1, :]), 1, height-1, minX, newRange)
-    return points, minX, maxX
+"""
+    rescale_points!(points, width, height, min_l=nothing, max_l=nothing)
+    
+In-place version of [`rescale_points`](@ref) function.
+Rescale log-centric points to so that ``l ∈ [1, height], θ ∈ [1, width]``. 
+`points` must be a 3×n `AbstractMatrix`, where the rows correspond to l, θ, ρ values respectively. 
+`min_l` and `max_l` are minimum and maximum values of l. If not provided explicitly, estimated from points. 
+
+"""
+function rescale_points!(points, width, height, min_l=nothing, max_l=nothing)
+    min_l = @something min_l minimum(points[1, :])
+    max_l = @something max_l maximum(points[1, :])
+    oldLRange = max_l - min_l
+    points[2, :] .= scale_range.(@view(points[2, :]), -π, 2π, 1, width-1)
+    points[1, :] .= scale_range.(@view(points[1, :]), min_l, oldLRange, 1, height-1)
+    return points, min_l, max_l
 end
-rescale_points_back(points, width, height, minY, maxY) = rescale_points_back!(copy(points), width, height, minY, maxY)
+"""
+    rescale_points!(points, width, height, min_l=nothing, max_l=nothing)
+    
+Rescale log-centric points to so that ``l ∈ [1, height], θ ∈ [1, width]``. 
+`points` must be a 3×n `AbstractMatrix`, where the rows correspond to l, θ, ρ values respectively. 
+`min_l` and `max_l` are minimum and maximum values of l. If not provided explicitly, estimated from points. 
+
+"""
+rescale_points(points, width, height, min_l=nothing, max_l=nothing) = rescale_points!(copy(points), width, height, min_l, max_l)
+
+function rescale_points_back!(points, width, height, min_l=nothing, max_l=nothing)
+    min_l = @something min_l minimum(points[1, :])
+    max_l = @something max_l maximum(points[1, :])
+    newRange = max_l - min_l
+    points[2, :] .= scale_range.(@view(points[2, :]), 1, width-1, -π, 2π)
+    points[1, :] .= scale_range.(@view(points[1, :]), 1, height-1, min_l, newRange)
+    return points, min_l, max_l
+end
+rescale_points_back(points, width, height, min_l=nothing, max_l=nothing) = rescale_points_back!(copy(points), width, height, min_l, max_l)
 
 
 function to_cylindrical!(points)
@@ -190,14 +210,77 @@ end
 
 from_cylindrical(points) = from_cylindrical!(copy(points))
 
+"""
+    to_logcentric_coordinates!(points, centerline)
+    
+In-place version of the [`to_logcentric_coordinates`](@ref) function.
+Convert 3 × n matrix of 3D cartesian points to the logcentric coordinates ``l, θ, ρ``.
 
-function to_heightmap_coordinates!(points, centerline, width, height, minX=nothing, maxX=nothing)
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details. 
+Note that this conversion differs from the published version and does not approximate centerline as line segments, but works with cubic splines directly. 
+"""
+function to_logcentric_coordinates!(points, centerline)
     straighten_x!(points, centerline)
     to_cylindrical!(points)
+    return points
+end
+"""
+    to_logcentric_coordinates(points, centerline)
+    
+Convert 3 × n matrix of 3D cartesian points to the logcentric coordinates ``l, θ, ρ``.
+
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details.
+Note that this conversion differs from the published version and does not approximate centerline as line segments, but works with cubic splines directly. 
+"""
+to_logcentric_coordinates(points, centerline) = to_logcentric_coordinates!(copy(points), centerline)
+"""
+    from_logcentric_coordinates!(points, centerline)
+    
+In-place version of the [`from_logcentric_coordinates`](@ref) function.
+Convert 3 × n matrix of logcentric coordinates ``l, θ, ρ`` to 3D cartesian points.
+
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details. 
+Note that this conversion differs from the published version and does not approximate centerline as line segments, but works with cubic splines directly. 
+"""
+function from_logcentric_coordinates!(points, centerline)
+    from_cylindrical!(points)
+    curve_x!(points, centerline)
+    return points
+end
+"""
+    from_logcentric_coordinates(points, centerline)
+    
+Convert 3 × n matrix of logcentric coordinates ``l, θ, ρ`` to 3D cartesian points.
+
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details. 
+Note that this conversion differs from the published version and does not approximate centerline as line segments, but works with cubic splines directly. 
+"""
+from_logcentric_coordinates(points, centerline) = from_logcentric_coordinates!(copy(points), centerline)
+"""
+    to_heightmap_coordinates!(points, centerline, width, height, minX=nothing, maxX=nothing)
+    
+In-place version of the [`to_heightmap_coordinates`](@ref) function.
+Convert 3 × n matrix of 3D cartesian points to the heightmap coordinates (logcentric coordinates scaled to the size of the heightmap).
+Applies [`to_logcentric_coordinates`](@ref) and [`rescale_points`](@ref).
+
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details.
+
+"""
+function to_heightmap_coordinates!(points, centerline, width, height, minX=nothing, maxX=nothing)
+    to_logcentric_coordinates!(points, centerline)
     points, minX, maxX = rescale_points!(points, width, height, minX, maxX)
     return points, minX, maxX
 end
 
+"""
+    to_heightmap_coordinates(points, centerline, width, height, minX=nothing, maxX=nothing)
+    
+Convert 3 × n matrix of 3D cartesian points to the heightmap coordinates (logcentric coordinates scaled to the size of the heightmap).
+Applies [`to_logcentric_coordinates`](@ref) and [`rescale_points`](@ref).
+
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details.
+
+"""
 to_heightmap_coordinates(points, 
     centerline, 
     width, 
@@ -205,14 +288,28 @@ to_heightmap_coordinates(points,
     minX=nothing, 
     maxX=nothing) = to_heightmap_coordinates!(copy(points), centerline, width, height, minX, maxX)
 
+"""
+    from_heightmap_coordinates!(points, centerline, width, height, minX=nothing, maxX=nothing)
+    
+In-place version of the [`from_heightmap_coordinates`](@ref) function.
+Convert ``3 × n`` matrix of 3D cartesian points to the heightmap coordinates (logcentric coordinates scaled to the size of the heightmap).
+Applies [`rescale_points_back`](@ref) and [`from_logcentric_coordinates`](@ref).
 
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details.
+"""
 function from_heightmap_coordinates!(points, centerline, width, height, minX=nothing, maxX=nothing)
     points, minX, maxX = rescale_points_back!(points, width, height, minX, maxX)
-    from_cylindrical!(points)
-    curve_x!(points, centerline)
+    from_logcentric_coordinates!(points, centerline)
     return points, minX, maxX
 end
+"""
+    from_heightmap_coordinates!(points, centerline, width, height, minX=nothing, maxX=nothing)
+    
+Convert ``3 × n`` matrix of 3D cartesian points to the heightmap coordinates (logcentric coordinates scaled to the size of the heightmap).
+Applies [`rescale_points_back`](@ref) and [`from_logcentric_coordinates`](@ref).
 
+Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more details.
+"""
 from_heightmap_coordinates(points, 
     centerline, 
     width, 

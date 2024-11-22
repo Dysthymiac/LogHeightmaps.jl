@@ -1,3 +1,4 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 LogHeightmaps = "7b82365c-f712-49c8-895b-fd515eb238ad"
+DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
