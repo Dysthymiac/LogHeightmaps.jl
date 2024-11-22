@@ -10,7 +10,7 @@ function cuda_is_functional()
 end
 
 """
-    rescale_calculate_heightmap(logcentric_points, α, min_l=nothing, max_l=nothing, real_length=nothing; use_cuda=cuda_is_functional())
+    rescale_calculate_heightmap(logcentric_points, α, width, height, min_l=nothing, max_l=nothing, real_length=nothing; use_cuda=cuda_is_functional())
     
 Calculate heightmap from the points in log-centric coordinate system. 
 `logcentric_points` must be a 3×n `AbstractMatrix`, where the rows correspond to l, θ, ρ values respectively, α is a smoothing parameter. 
@@ -22,7 +22,7 @@ Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more detail
 # Keywords
 - `use_cuda=cuda_is_functional()`: it is possible to use CUDA to speed up the computation.
 """
-rescale_calculate_heightmap(logcentric_points, α, min_l=nothing, max_l=nothing, real_length=nothing; use_cuda=cuda_is_functional()) = 
+rescale_calculate_heightmap(logcentric_points, α, width, height, min_l=nothing, max_l=nothing, real_length=nothing; use_cuda=cuda_is_functional()) = 
     rescale_calculate_heightmap!(zeros(height, width), logcentric_points, α, min_l, max_l, real_length; use_cuda=use_cuda)
 
 """
@@ -62,7 +62,7 @@ Refer to [zolotarev2020modelling](@cite), [zolotarev2022](@cite) for more detail
 calculate_heightmap(rescaled_points, α, width, height, real_length; use_cuda=cuda_is_functional()) = 
     calculate_heightmap!(zeros(height, width), rescaled_points, α, real_length; use_cuda=use_cuda)
 
-function cg_cuda! end
+function cg_cuda!(::Nothing, ::Nothing) end
 
 function do_cg!(b, R; use_cuda=cuda_is_functional())
     if use_cuda
