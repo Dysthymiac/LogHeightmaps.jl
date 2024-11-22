@@ -184,8 +184,15 @@ Rescale log-centric points to so that ``l ∈ [1, height], θ ∈ [1, width]``.
 
 """
 rescale_points(points, width, height, min_l=nothing, max_l=nothing) = rescale_points!(copy(points), width, height, min_l, max_l)
+"""
+    rescale_points_back!(points, width, height, min_l, max_l)
+    
+In-place version of [`rescale_points_back`](@ref) function.
+Rescale log-centric points from ``l ∈ [1, height], θ ∈ [1, width]`` to ``l ∈ [min_l, max_l], θ ∈ [-π, π]``. 
+`points` must be a 3×n `AbstractMatrix`, where the rows correspond to l, θ, ρ values respectively. 
 
-function rescale_points_back!(points, width, height, min_l=nothing, max_l=nothing)
+"""
+function rescale_points_back!(points, width, height, min_l, max_l)
     min_l = @something min_l minimum(points[1, :])
     max_l = @something max_l maximum(points[1, :])
     newRange = max_l - min_l
@@ -193,7 +200,14 @@ function rescale_points_back!(points, width, height, min_l=nothing, max_l=nothin
     points[1, :] .= scale_range.(@view(points[1, :]), 1, height-1, min_l, newRange)
     return points, min_l, max_l
 end
-rescale_points_back(points, width, height, min_l=nothing, max_l=nothing) = rescale_points_back!(copy(points), width, height, min_l, max_l)
+"""
+    rescale_points_back(points, width, height, min_l, max_l)
+    
+Rescale log-centric points from ``l ∈ [1, height], θ ∈ [1, width]`` to ``l ∈ [min_l, max_l], θ ∈ [-π, π]``. 
+`points` must be a 3×n `AbstractMatrix`, where the rows correspond to l, θ, ρ values respectively. 
+
+"""
+rescale_points_back(points, width, height, min_l, max_l) = rescale_points_back!(copy(points), width, height, min_l, max_l)
 
 
 function to_cylindrical!(points)
