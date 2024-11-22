@@ -3,7 +3,7 @@ using Documenter
 using DocumenterCitations
 
 DocMeta.setdocmeta!(LogHeightmaps, :DocTestSetup, :(using LogHeightmaps); recursive=true)
-
+bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"))
 makedocs(;
     modules=[LogHeightmaps],
     authors="Ted <tedzolotarev@gmail.com> and contributors",
