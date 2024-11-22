@@ -11,7 +11,7 @@ makedocs(;
     plugins=[bib],
     format=Documenter.HTML(;
         canonical="https://Dysthymiac.github.io/LogHeightmaps.jl",
-        edit_link="master",
+        edit_link="main",
         assets=String[],
     ),
     pages=[
@@ -21,5 +21,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/Dysthymiac/LogHeightmaps.jl",
-    devbranch="master",
+    devbranch="main",
 )
