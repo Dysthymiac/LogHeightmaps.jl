@@ -1,4 +1,4 @@
-using CUDA
+using CUDA # It is recommended to import CUDA to make use of GPU for the calculation of the heightmap
 using LogHeightmaps
 using MAT
 using GLMakie
@@ -7,7 +7,8 @@ using Statistics
 
 log = 1
 run = 3
-# file_path = 
+file_path = "path/to/pointcloud.mat"
+
 data = MAT.matread(file_path)
 
 points = data["laser"][:, 2:4]' |> collect
