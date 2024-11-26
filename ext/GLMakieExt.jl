@@ -65,8 +65,8 @@ function do_debug_plots(i, exit, ready, ax, res, dists, circle, points, snake_po
     
     
     GLMakie.lines!(ax, eachcol(snake_points[vcat(1:end, 1), :])..., color=:red)
-    GLMakie.lines!(ax, eachcol(shift_snake(snake_points, max_distance)[vcat(1:end, 1), :])..., color=:red, linestyle = :dash)
-    GLMakie.lines!(ax, eachcol(shift_snake(snake_points, -max_distance)[vcat(1:end, 1), :])..., color=:red, linestyle = :dash)
+    GLMakie.lines!(ax, eachcol(LogHeightmaps.shift_snake(snake_points, max_distance)[vcat(1:end, 1), :])..., color=:red, linestyle = :dash)
+    GLMakie.lines!(ax, eachcol(LogHeightmaps.shift_snake(snake_points, -max_distance)[vcat(1:end, 1), :])..., color=:red, linestyle = :dash)
 
 
     all_dists = LogHeightmaps.distance_to_snake(points[:, 2:3], snake_points)

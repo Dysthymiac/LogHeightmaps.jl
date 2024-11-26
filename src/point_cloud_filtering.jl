@@ -50,13 +50,13 @@ and `circles` is a `4 × m` array containing layer number (cross-section index),
 function filter_point_cloud(data; snake_size=180, 
                             min_radius=75, 
                             max_radius=200, 
-                            max_resiudal=4, 
-                            points_threshold=300, 
-                            filtered_threshold=200,
+                            max_resiudal=6, 
+                            points_threshold=350, 
+                            filtered_threshold=250,
                             max_distance=10, max_rad_diff=20,
-                            snake_coverage=0.8,
+                            snake_coverage=0.7,
                             snake_iterations=10,
-                            max_skipped_layers=5,
+                            max_skipped_layers=10,
                             debug_plots=false)
     data = data'
     if size(data, 2) < 4
