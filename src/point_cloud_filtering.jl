@@ -35,7 +35,7 @@ and `circles` is a `4 × m` array containing layer number (cross-section index),
 
 # Keywords
 - `snake_size=180`: number of points to use for active contour 
-- `snake_kwparams=()`: keyword parameters for the active contour algorithm defined as a NamedTuple, the defaults are (α=0.01, β=0.5, γ=10, σ=20, dist_α=1)
+- `snake_kwparams=(α=0.01, β=0.5, γ=10, σ=20, dist_α=1)`: keyword parameters for the active contour algorithm defined as a NamedTuple
 - `min_radius=75`: minimum radius of a log cross-section 
 - `max_radius=200`: maximum radius of a log cross-section 
 - `max_resiudal=4`: maximum residual error 
@@ -167,7 +167,7 @@ vectornorm(x; dims) = .√sum(x.^2; dims=dims)
 
 get_dist_γ(radius; α=1, t=0.5) = let tt = t^(1/α); (1 - tt)/(tt*radius^2) end
 
-function init_snake_params(n, 
+function init_snake_params(n; 
                             α=0.01, 
                             β=0.5, 
                             γ=10, 
