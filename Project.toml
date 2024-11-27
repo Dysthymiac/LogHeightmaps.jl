@@ -1,7 +1,7 @@
 name = "LogHeightmaps"
 uuid = "7b82365c-f712-49c8-895b-fd515eb238ad"
 authors = ["Ted <tedzolotarev@gmail.com> and contributors"]
-version = "1.0.1-DEV"
+version = "1.0.2-DEV"
 
 [deps]
 BandedMatrices = "aae01518-5342-5314-be14-df237901396f"

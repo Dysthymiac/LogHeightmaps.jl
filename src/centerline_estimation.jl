@@ -224,8 +224,8 @@ end
 function reevaluate_spline(n_segments::ExtremaSegments, X, splineXY, splineXZ) 
     peaks = get_3D_peaks(splineXY, splineXZ)
     clean_peaks = peaks[[true; abs.(diff(peaks)) .> n_segments.min_x_step]]
-    Y = SmoothingSplines.predict(splineXY, X)
-    Z = SmoothingSplines.predict(splineXZ, X)
+    Y = SmoothingSplines.predict(splineXY, clean_peaks)
+    Z = SmoothingSplines.predict(splineXZ, clean_peaks)
     splineXY = SmoothingSplines.fit(SmoothingSpline, clean_peaks, Y, 0.0)
     splineXZ = SmoothingSplines.fit(SmoothingSpline, clean_peaks, Z, 0.0)
     return clean_peaks, splineXY, splineXZ

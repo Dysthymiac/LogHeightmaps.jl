@@ -5,9 +5,8 @@ using GLMakie
 using Images
 using Statistics
 
-log = 1
-run = 3
-file_path = "path/to/pointcloud.mat"
+include("load_log.jl")
+# file_path = "path/to/pointcloud.mat"
 
 data = MAT.matread(file_path)
 
@@ -25,6 +24,7 @@ points = points[[3, 1, 2], points_filter]
 # display(f)
 
 @time "Centerline" centerline = SmoothingSpline3D(eachrow(circles[2:4, :])...)
+# @time "Centerline" centerline = SmoothingSpline3D(eachrow(circles[2:4, :])..., n_segments=nothing)
 
 width = 360
 height = size(circles, 2)
@@ -49,7 +49,11 @@ display(GLMakie.Screen(), scatter(heightmap_coords, fxaa=true, color=heightmap_c
 converted_back, _, _ = from_heightmap_coordinates(heightmap_coords, centerline, width, height, minX, maxX)
 
 f = scatter(points, fxaa=true, color=heightmap_coords[3, :])
+lines!(predict_points(centerline, range(minX, maxX, 100))..., linewidth=4)
+meshscatter!(circles[2:4, :], markersize=10)
 display(GLMakie.Screen(), f)
+
+
 f = scatter(converted_back, fxaa=true, color=heightmap_coords[3, :], colormap=:magma)
 display(GLMakie.Screen(), f)
 

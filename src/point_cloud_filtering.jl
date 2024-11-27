@@ -35,6 +35,7 @@ and `circles` is a `4 × m` array containing layer number (cross-section index),
 
 # Keywords
 - `snake_size=180`: number of points to use for active contour 
+- `snake_kwparams=()`: keyword parameters for the active contour algorithm defined as a NamedTuple, the defaults are (α=0.01, β=0.5, γ=10, σ=20, dist_α=1)
 - `min_radius=75`: minimum radius of a log cross-section 
 - `max_radius=200`: maximum radius of a log cross-section 
 - `max_resiudal=4`: maximum residual error 
@@ -48,13 +49,14 @@ and `circles` is a `4 × m` array containing layer number (cross-section index),
 - `debug_plots=false`: specifies whether to plot each layer with filtering information. Requires `GLMakie` package to be installed. 
 """
 function filter_point_cloud(data; snake_size=180, 
+                            snake_kwparams=(),
                             min_radius=75, 
                             max_radius=200, 
                             max_resiudal=6, 
-                            points_threshold=350, 
-                            filtered_threshold=250,
-                            max_distance=10, max_rad_diff=20,
-                            snake_coverage=0.7,
+                            points_threshold=300, 
+                            filtered_threshold=200,
+                            max_distance=4, max_rad_diff=20,
+                            snake_coverage=0.8,
                             snake_iterations=10,
                             max_skipped_layers=10,
                             debug_plots=false)
@@ -74,7 +76,7 @@ function filter_point_cloud(data; snake_size=180,
 
     circle = Vector{Float64}(undef, 3)
     snake_points = Matrix{Float64}(undef, snake_size, 2)
-    snake_params = init_snake_params(snake_size)
+    snake_params = init_snake_params(snake_size; snake_kwparams...)
     skipped_layers = -1
 
     if debug_plots
@@ -167,8 +169,8 @@ get_dist_γ(radius; α=1, t=0.5) = let tt = t^(1/α); (1 - tt)/(tt*radius^2) end
 
 function init_snake_params(n, 
                             α=0.01, 
-                            β=1, 
-                            γ=50, 
+                            β=0.5, 
+                            γ=10, 
                             σ=20,
                             dist_α=1)
     a = γ*(2α+6β)+1
